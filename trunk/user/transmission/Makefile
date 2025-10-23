@@ -32,6 +32,8 @@ configure:
 		--without-gtk \
 		--with-inotify \
 		--with-zlib=$(STAGEDIR) \
+		ZLIB_CFLAGS="-I$(STAGEDIR)/include" \
+		ZLIB_LIBS="-L$(STAGEDIR)/lib -lz" \
 		OPENSSL_CFLAGS="-I$(STAGEDIR)/include" \
 		OPENSSL_LIBS="-L$(STAGEDIR)/lib -lssl -lcrypto" \
 		LIBCURL_CFLAGS="-I$(STAGEDIR)/include" \

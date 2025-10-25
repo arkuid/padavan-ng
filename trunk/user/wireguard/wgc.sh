@@ -277,7 +277,6 @@ start_wg()
 
 start_watchdog()
 {
-    [ -f "$PID_WATCHDOG" ] || return
     log "connection watchdog timer started"
 
     if check_connection_status; then
@@ -291,15 +290,16 @@ start_watchdog()
     local no_log
     while is_started; do
         if reconnect_wg $no_log; then
-            check_fw || start_fw
+            start_fw
             no_log=
         else
-            check_fw && stop_fw
+            stop_fw
             no_log=1
         fi
         sleep 10
     done
 
+    log "connection watchdog timer stopped"
     rm -f "$PID_WATCHDOG"
 }
 
@@ -316,7 +316,7 @@ update_wg()
     is_started || return 1
 
     if check_connected; then
-        check_fw || start_fw
+        start_fw
     fi
 }
 
@@ -430,6 +430,8 @@ check_fw()
 
 stop_fw()
 {
+    check_fw || return
+
     ipt_remove_rule(){ while iptables -t $1 -C $2 2>/dev/null; do iptables -t $1 -D $2; done }
     ipt_remove_chain(){ iptables -t $1 -F $2 2>/dev/null && iptables -t $1 -X $2 2>/dev/null; }
 
@@ -443,10 +445,13 @@ stop_fw()
 
 start_fw()
 {
-    stop_fw
     is_started || return 1
+    check_fw && return
 
-    iptables-restore -n <<EOF
+    (
+        # iptables v1.4.16.3 does not support locking functions (option -w)
+        flock -x 200 || exit 1
+        iptables-restore -n <<EOF
 *mangle
 :vpnc_wireguard - [0:0]
 :vpnc_wireguard_remote - [0:0]
@@ -468,8 +473,9 @@ $(ipt_set_rules)
 -A vpnc_wireguard_mark -m mark --mark $FWMARK -j CONNMARK --save-mark
 COMMIT
 EOF
-    [ $? -ne 0 ] && error "firewall rules update failed"
-    return 0
+        [ $? -ne 0 ] && error "firewall rules update failed"
+
+    ) 200>/var/lock/wg_start_fw.lock
 }
 
 case $1 in

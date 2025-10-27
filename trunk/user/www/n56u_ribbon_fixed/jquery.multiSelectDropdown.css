@@ -36,7 +36,7 @@
 }
 
 .msd-header .msd-input::placeholder {
-    color: #555;
+  color: #555;
 }
 
 .msd-header .msd-input[readonly] {
@@ -94,6 +94,13 @@
   cursor: default;
   margin: 0;
   padding: 6px 8px 6px 8px;
+}
+
+.msd-title {
+  margin-left: auto;
+  font-stretch: condensed;
+  font-size: 12px;
+  color: #888888;
 }
 
 .msd-label input[type="checkbox"] {

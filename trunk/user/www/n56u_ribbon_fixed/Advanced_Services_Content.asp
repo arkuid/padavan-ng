@@ -24,6 +24,7 @@
 <script type="text/javascript" src="/help.js"></script>
 <script>
 var $j = jQuery.noConflict();
+var ipmonitor = [<% get_static_client(); %>];
 
 $j(document).ready(function() {
 	init_itoggle('telnetd');
@@ -427,21 +428,36 @@ function change_zapret_enabled(){
 		}
 	});
 
-	var zapret_clients_allowed = "<% nvram_get_x("", "zapret_clients_allowed"); %>";
-	zapret_clients_allowed.replace(/\s+/g, '');
-	var zapret_clients = "<% nvram_get_x("", "zapret_clients"); %>";
+	var allowed_list = "<% nvram_get_x("", "zapret_clients_allowed"); %>";
+	var clients_list = "<% nvram_get_x("", "zapret_clients"); %>";
 
-	const map_zapret_clients_allowed = zapret_clients_allowed.split(',').map(word => word);
-	const map_zapret_clients = zapret_clients.split(',').map(word => word);
-	zapret_clients = map_zapret_clients.filter(word => !zapret_clients_allowed.includes(word)).join(',').replace(/\s+/g, '');
+	const monitorIPs = ipmonitor.map(item => item[0]);
 
-	const data_clients = [
-		...zapret_clients_allowed.split(',').filter(Boolean).map(text => ({text, checked: true})),
-		...zapret_clients.split(',').filter(Boolean).map(text => ({text, checked: false}))
+	const allowed = allowed_list.replace(/\s+/g, '').split(',')
+		.filter(Boolean)
+		.map(item => item);
+	const clients = clients_list.replace(/\s+/g, '').split(',')
+		.filter(Boolean)
+		.filter(ip => !allowed.includes(ip))
+		.filter(ip => !monitorIPs.includes(ip))
+		.map(item => item);
+
+	const items = [
+		...ipmonitor
+			.filter(ip => allowed.includes(ip[0]))
+			.map(item => ( {text: item[0], title: item[2].slice(0,10), checked: true } )),
+		...allowed
+			.filter(ip => !monitorIPs.includes(ip))
+			.map(item => ( {text: item, checked: true } )),
+		...ipmonitor
+			.filter(ip => ip[0])
+			.filter(ip => !allowed.includes(ip[0]))
+			.map(item => ( {text: item[0], title: item[2].slice(0,10), checked: false } )),
+		...clients.map(item => ( {text: item, checked: false } ))
 	];
 
 	$j('#zapret_clients_list').multiSelectDropdown({
-		items: data_clients,
+		items: items,
 		placeholder: "<#ZapretWORestrictions#>",
 		width: '220px',
 		allowDelete: true,

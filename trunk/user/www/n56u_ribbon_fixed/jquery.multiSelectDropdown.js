@@ -81,7 +81,7 @@
               }
           }
 
-          function createItem(text, checked=false){
+          function createItem(text, checked=false, title){
             const $container = $('<div>').addClass('msd-item');
 
             if (settings.allowDelete) {
@@ -109,6 +109,7 @@
               });
 
             $label.append($checkbox).append($('<span>').text(text));
+            $label.append($('<span>').addClass('msd-title').text(title));
             $container.append($label);
 
             $itemList.append($container);
@@ -278,7 +279,7 @@
             }
           });
 
-          $(window).on('click', function(e){
+          $(window).on('mousedown', function(e){
             if(!$(e.target).closest($wrapper).length){
               hideDropdown();
               updateSelected();
@@ -289,7 +290,7 @@
             if(typeof item === 'string'){
               createItem(item, false);
             } else if(item && typeof item === 'object' && item.text){
-              createItem(item.text, !!item.checked);
+              createItem(item.text, !!item.checked, item.title);
             }
           });
 

@@ -276,6 +276,7 @@ function change_vpnc_type() {
 	showhide_div('vpnc_peer_row', !is_wg);
 	showhide_div('tbl_vpnc_access_control', is_wg);
 	showhide_div('row_vpnc_ipset', found_support_ipset());
+	showhide_div('row_dipset', found_support_ipset());
 
 	$("vpnc_use_dns").innerHTML = "<#VPNC_PDNS#>";
 	if (is_wg) {
@@ -1150,6 +1151,16 @@ function vpnc_access_control() {
                                         <input type="hidden" name="vpnc_ipset_allowed" value="<% nvram_get_x("", "vpnc_ipset_allowed"); %>">
                                     </td>
                                 </tr>
+
+                                <tr id="row_dipset" style="display: none">
+                                    <td colspan="2">
+                                        <a href="javascript:spoiler_toggle('spoiler_dipset')"><span><#CustomConf#> "dnsmasq.ipset"</span> <i style="scale: 75%;" class="icon-chevron-down"></i></a>
+                                        <div id="spoiler_dipset" style="display:none;">
+                                            <textarea rows="16" wrap="off" spellcheck="false" maxlength="16384" class="span12" name="dnsmasq.dnsmasq.ipset" style="resize: vertical; font-family:'Courier New'; font-size:12px;"><% nvram_dump("dnsmasq.dnsmasq.ipset",""); %></textarea>
+                                        </div>
+                                    </td>
+                                </tr>
+
                                 <tr>
                                     <td colspan="2">
                                         <a href="javascript:spoiler_toggle('spoiler_vpnc_remote_network')"><span><#VPNC_RNet_List#>:</span> <i style="scale: 75%;" class="icon-chevron-down"></i></a>

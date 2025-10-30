@@ -617,10 +617,10 @@ struct nvram_pair router_defaults[] = {
 	{ "tor_enable", "0" },
 	{ "tor_proxy_mode", "0" }, // transparent proxy: 0 - disabled, 1 - redirect allowed, 2 - redirect all
 	{ "tor_clients", "192.168.1.0/24,10.8.0.0/24" },
-	{ "tor_clients_allowed", "192.168.1.0/24,10.8.0.0/24" },
+	{ "tor_clients_allowed", "" },
 #if defined(SUPPORT_IPSET)
-	{ "tor_ipset_remote", "tor,unblock" },
-	{ "tor_ipset_remote_allowed", "tor" },
+	{ "tor_ipset", "tor" },
+	{ "tor_ipset_allowed", "tor" },
 #endif
 #endif
 #if defined (APP_PRIVOXY)
@@ -770,6 +770,13 @@ struct nvram_pair router_defaults[] = {
 	{ "vpnc_sfw", "0" },
 	{ "vpnc_dgw", "0" },
 
+	{ "vpnc_clients", "192.168.1.0/24,10.8.0.0/24" },
+	{ "vpnc_clients_allowed", "" },
+#if defined(SUPPORT_IPSET)
+	{ "vpnc_ipset", "unblock" },
+	{ "vpnc_ipset_allowed", "unblock" },
+#endif
+
 	{ "vpns_ov_mode", "1" },
 	{ "vpns_ov_prot", "0" },
 	{ "vpns_ov_port", "1194" },
@@ -806,15 +813,7 @@ struct nvram_pair router_defaults[] = {
 	{ "vpnc_wg_peer_endpoint", "" },
 	{ "vpnc_wg_peer_port", "51820" },
 	{ "vpnc_wg_peer_keepalive", "25" },
-	{ "vpnc_wg_peer_allowedips", "" },
-	{ "vpnc_wg_clients", "192.168.1,0/24,10.8.0.0/24" },
-	{ "vpnc_wg_clients_allowed", "192.168.1,0/24,10.8.0.0/24" },
-#if defined(SUPPORT_IPSET)
-	{ "vpnc_wg_ipset_remote", "unblock,custom.remote" },
-	{ "vpnc_wg_ipset_remote_allowed", "unblock,custom.remote" },
-	{ "vpnc_wg_ipset_exclude", "" },
-	{ "vpnc_wg_ipset_exclude_allowed", "" },
-#endif
+	{ "vpnc_wg_peer_allowedips", "0.0.0.0/0, ::/0" },
 #endif
 	{ 0, 0 }
 };

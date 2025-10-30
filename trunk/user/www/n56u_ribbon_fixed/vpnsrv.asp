@@ -797,7 +797,7 @@ function showACLList(vnet_show,rnet_show,is_openvpn, is_wg){
 				code += '<div id="wg_client' + i + '"></div>';
 				code += '</td>';
 				code += '<td style="border: 0 none; vertical-align: top; padding-right: 0px;">';
-				code += '<input id="wg_client_save' + i + '" type="button" onclick="export_client_wg(' + i + ');" value="Сохранить в файл" class="btn btn-success" style="width: 160px;">';
+				code += '<input id="wg_client_save' + i + '" type="button" onclick="export_client_wg(' + i + ');" value="<#CTL_onlysave#>" class="btn btn-success" style="width: 160px;">';
 				code += '<span style="padding-left: 8px;" id="wg_client_file' + i + '"></span>'
 				code += '<pre style="margin-top: 8px; line-height: 1.2em; font-size: 12px;" id="wg_client_config' + i + '"></pre>';
 				code += '</td></tr>';

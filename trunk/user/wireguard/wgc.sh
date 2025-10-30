@@ -22,17 +22,19 @@ PEER_ENDPOINT="$(nvram get vpnc_wg_peer_endpoint)${PEER_PORT:+":$PEER_PORT"}"
 PEER_KEEPALIVE=$(nvram get vpnc_wg_peer_keepalive)
 PEER_ALLOWEDIPS="$(nvram get vpnc_wg_peer_allowedips | tr -d ' ')"
 POST_SCRIPT="/etc/storage/vpnc_server_script.sh"
+
 REMOTE_NETWORK_LIST="/etc/storage/vpnc_remote_network.list"
 EXCLUDE_NETWORK_LIST="/etc/storage/vpnc_exclude_network.list"
-CLIENTS_LIST="/etc/storage/vpnc_clients.list"
+
+NV_CLIENTS_LIST="$(nvram get vpnc_clients_allowed | tr -s ' ,' '\n')"
+NV_IPSET_LIST="$(nvram get vpnc_ipset_allowed | tr -s ' ,' '\n')"
 
 TABLE=51
 FWMARK=51820
 PREF_WG=5182
 PREF_MAIN=5181
 
-DNSMASQ_REMOTE_IPSET="unblock"
-CUSTOM_REMOTE_IPSET="custom.remote"
+DNSMASQ_IPSET="unblock"
 
 # nethash remote networks
 VPN_REMOTE_IPSET="vpn.remote"
@@ -308,7 +310,9 @@ reload_wg()
     is_started || return 1
 
     ipset_create
-    update_wg
+    stop_fw
+    update_wg \
+        && log "client settings successfully reloaded"
 }
 
 update_wg()
@@ -357,7 +361,7 @@ ipset_load()
     local list="$3"
 
     [ -n "$name" ] || return
-    ipset -N $name nethash 2>/dev/null \
+    ipset -q -N $name nethash \
         && log "ipset '$name' created successfully"
     ipset flush $name
 
@@ -381,12 +385,17 @@ ipset_create()
 
     [ -n "$IPSET" ] || return
 
-    ipset -N $DNSMASQ_REMOTE_IPSET nethash timeout 3600 2>/dev/null
-    ipset -N $CUSTOM_REMOTE_IPSET nethash 2>/dev/null
+    ipset -N $DNSMASQ_IPSET nethash timeout 3600 2>/dev/null
 
     ipset_load "list" $VPN_REMOTE_IPSET $REMOTE_NETWORK_LIST
     ipset_load "list" $VPN_EXCLUDE_IPSET $EXCLUDE_NETWORK_LIST
-    ipset_load "list" $VPN_CLIENTS_IPSET $CLIENTS_LIST
+    ipset_load "nv" $VPN_CLIENTS_IPSET $NV_CLIENTS_LIST
+
+    local name
+    for name in $NV_IPSET_LIST; do
+        ipset -q -N $name nethash \
+            && log "ipset '$name' created successfully"
+    done
 }
 
 ipt_set_rules()
@@ -394,13 +403,16 @@ ipt_set_rules()
     local i
 
     if [ -n "$IPSET" ]; then
-        echo "-A vpnc_wireguard -m set ! --match-set $VPN_CLIENTS_IPSET src -j RETURN"
+        if [ -n "$NV_CLIENTS_LIST" ]; then
+            echo "-A vpnc_wireguard -m set ! --match-set $VPN_CLIENTS_IPSET src -j RETURN"
+        fi
+
         echo "-A vpnc_wireguard -m set --match-set $VPN_EXCLUDE_IPSET dst -j RETURN"
 
         if [ -n "$DEFAULT" ]; then
             echo "-A vpnc_wireguard -j vpnc_wireguard_mark"
         else
-            for i in "$DNSMASQ_REMOTE_IPSET" "$VPN_REMOTE_IPSET" "$CUSTOM_REMOTE_IPSET"; do
+            for i in "$VPN_REMOTE_IPSET" $NV_IPSET_LIST; do
                 [ -n "$i" ] && echo "-A vpnc_wireguard -m set --match-set $i dst -j vpnc_wireguard_mark"
             done
         fi
@@ -409,9 +421,13 @@ ipt_set_rules()
             echo "-A vpnc_wireguard -d $i -j RETURN"
         done
 
-        for i in $(filter_ipv4 < "$CLIENTS_LIST"); do
-            echo "-A vpnc_wireguard -s $i -j vpnc_wireguard_remote"
-        done
+        if [ -n "$NV_CLIENTS_LIST" ]; then
+            for i in $NV_CLIENTS_LIST; do
+                echo "-A vpnc_wireguard -s $i -j vpnc_wireguard_remote"
+            done
+        else
+            echo "-A vpnc_wireguard -j vpnc_wireguard_remote"
+        fi
 
         if [ -n "$DEFAULT" ]; then
             echo "-A vpnc_wireguard_remote -j vpnc_wireguard_mark"
@@ -451,6 +467,7 @@ start_fw()
     (
         # iptables v1.4.16.3 does not support locking functions (option -w)
         flock -x 200 || exit 1
+
         iptables-restore -n <<EOF
 *mangle
 :vpnc_wireguard - [0:0]
@@ -473,9 +490,8 @@ $(ipt_set_rules)
 -A vpnc_wireguard_mark -m mark --mark $FWMARK -j CONNMARK --save-mark
 COMMIT
 EOF
-        [ $? -ne 0 ] && error "firewall rules update failed"
-
-    ) 200>/var/lock/wg_start_fw.lock
+        [ $? -eq 0 ] || error "firewall rules update failed"
+    ) 200>/var/lock/wgc_iptables.lock
 }
 
 case $1 in

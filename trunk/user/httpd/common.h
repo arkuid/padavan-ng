@@ -92,6 +92,7 @@ typedef u_int8_t u8;
 #define EVM_RESTART_ZAPRET		(1ULL << 47)
 #define EVM_RESTART_DOH			(1ULL << 48)
 #define EVM_RESTART_STUBBY		(1ULL << 49)
+#define EVM_REAPPLY_VPNCLI		(1ULL << 50)
 
 #define EVM_RESTART_REBOOT		(1ULL << 62)
 #define EVM_BLOCK_UNSAFE		(1ULL << 63) /* special case */
@@ -108,6 +109,7 @@ typedef u_int8_t u8;
 #define EVT_RESTART_NETFILTER		1
 #define EVT_REAPPLY_VPNSVR		1
 #define EVT_RESTART_VPNSVR		2
+#define EVT_REAPPLY_VPNCLI		1
 #define EVT_RESTART_VPNCLI		2
 #if defined (USE_RT3352_MII)
 #define EVT_RESTART_WIFI2		5

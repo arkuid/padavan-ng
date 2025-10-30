@@ -271,6 +271,22 @@ restart_vpn_client(void)
 }
 
 void
+reapply_vpn_client(void)
+{
+        int i_type;
+
+        if (nvram_invmatch("vpnc_enable", "1") || get_ap_mode())
+                return;
+
+        i_type = nvram_get_int("vpnc_type");
+#if defined(APP_WIREGUARD)
+        if (i_type == 3)
+                reload_wireguard_client();
+#endif
+}
+
+
+void
 restore_dns_from_vpnc(void)
 {
 	char *vpnc_dns = nvram_safe_get("vpnc_dns_t");

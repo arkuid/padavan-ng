@@ -14,12 +14,14 @@ error()
 
 restore()
 {
-    local name="custom.remote"
-    local list="$1"
+    local name="$1"
+    local list="$2"
 
+    [ -n "$name" ] || error "specify the ipset name"
     [ -f "$list" ] || error "file $list not found"
 
-    ipset -N $name nethash 2>/dev/null
+    ipset -q -N $name nethash \
+        && echo "ipset '$name' created successfully"
     ipset flush $name
 
     filter_ipv4 < "$list" \
@@ -35,10 +37,11 @@ restore()
 
 case "$1" in
     "")
-        echo "Usage: $0 <filelist_ipv4_cidr>"
+        echo "Usage: $0 <ipset_name> <filelist_ipv4_cidr>"
         exit 1
     ;;
+
     *)
-        restore "$1"
+        restore "$1" "$2"
     ;;
 esac

@@ -534,7 +534,7 @@
 			{"zapret_iface", "", NULL, EVM_RESTART_ZAPRET},
 			{"zapret_log", "", NULL, EVM_RESTART_ZAPRET},
 			{"zapret_strategy", "", NULL, EVM_RESTART_ZAPRET},
-			{"zapret_clients", "", NULL, EVM_RESTART_ZAPRET},
+			{"zapret_clients", "", NULL, FALSE},
 			{"zapret_clients_allowed", "", NULL, EVM_RESTART_ZAPRET},
 			{"zapretc.post_script.sh", "File", NULL, EVM_RESTART_ZAPRET|EVM_BLOCK_UNSAFE},
 			{"zapretc.strategy", "File", NULL, EVM_RESTART_ZAPRET|EVM_BLOCK_UNSAFE},
@@ -548,9 +548,9 @@
 			{"zapretc.strategy7", "File", NULL, EVM_RESTART_ZAPRET|EVM_BLOCK_UNSAFE},
 			{"zapretc.strategy8", "File", NULL, EVM_RESTART_ZAPRET|EVM_BLOCK_UNSAFE},
 			{"zapretc.strategy9", "File", NULL, EVM_RESTART_ZAPRET|EVM_BLOCK_UNSAFE},
-			{"zapretc.auto.list", "File", NULL, EVM_BLOCK_UNSAFE},
-			{"zapretc.user.list", "File", NULL, EVM_BLOCK_UNSAFE},
-			{"zapretc.exclude.list", "File", NULL, EVM_BLOCK_UNSAFE},
+			{"zapretc.auto.list", "File", NULL, FALSE},
+			{"zapretc.user.list", "File", NULL, FALSE},
+			{"zapretc.exclude.list", "File", NULL, FALSE},
 #endif
 #if defined(APP_TOR)
 			{"tor_enable", "", NULL, EVM_RESTART_TOR|EVM_RESTART_DHCPD},
@@ -644,6 +644,10 @@
 			{"vpnc_dgw", "", NULL, EVM_RESTART_VPNCLI},
 			{"vpnc_rnet", "", NULL, EVM_RESTART_VPNCLI},
 			{"vpnc_rmsk", "", NULL, EVM_RESTART_VPNCLI},
+			{"vpnc_clients", "", NULL, FALSE},
+			{"vpnc_clients_allowed", "", NULL, EVM_REAPPLY_VPNCLI},
+			{"vpnc_ipset", "", NULL, FALSE},
+			{"vpnc_ipset_allowed", "", NULL, EVM_REAPPLY_VPNCLI},
 #if defined(APP_WIREGUARD)
 			{"vpns_wg_port", "", NULL, EVM_RESTART_VPNSVR},
 			{"vpns_wg_private", "", NULL, EVM_RESTART_VPNSVR},
@@ -661,9 +665,8 @@
 			{"vpnc_wg_peer_port", "", NULL, EVM_RESTART_VPNCLI},
 			{"vpnc_wg_peer_keepalive", "", NULL, EVM_RESTART_VPNCLI},
 			{"vpnc_wg_peer_allowedips", "", NULL, EVM_RESTART_VPNCLI},
-			{"scripts.vpnc_remote_network.list", "File", NULL, EVM_RESTART_VPNCLI},
-			{"scripts.vpnc_exclude_network.list", "File", NULL, EVM_RESTART_VPNCLI},
-			{"scripts.vpnc_clients.list", "File", NULL, EVM_RESTART_VPNCLI},
+			{"scripts.vpnc_remote_network.list", "File", NULL, EVM_REAPPLY_VPNCLI},
+			{"scripts.vpnc_exclude_network.list", "File", NULL, EVM_REAPPLY_VPNCLI},
 #endif
 #if defined(APP_OPENVPN)
 			{"vpns_ov_mode", "", NULL, EVM_RESTART_VPNSVR},
@@ -980,7 +983,7 @@
 		{EVM_RESTART_RADV,		EVT_RESTART_RADV,		RCN_RESTART_RADV,	EVM_RESTART_DHCPD},
 		{EVM_RESTART_IPTV,		EVT_RESTART_IPTV,		RCN_RESTART_IPTV,	EVM_RESTART_FIREWALL},
 		{EVM_RESTART_VPNSVR,		EVT_RESTART_VPNSVR,		RCN_RESTART_VPNSVR,	EVM_RESTART_FIREWALL|EVM_REAPPLY_VPNSVR},
-		{EVM_RESTART_VPNCLI,		EVT_RESTART_VPNCLI,		RCN_RESTART_VPNCLI,	EVM_RESTART_FIREWALL},
+		{EVM_RESTART_VPNCLI,		EVT_RESTART_VPNCLI,		RCN_RESTART_VPNCLI,	EVM_RESTART_FIREWALL|EVM_REAPPLY_VPNCLI},
 		{EVM_RESTART_HTTPD,		EVT_RESTART_HTTPD,		RCN_RESTART_HTTPD,	EVM_RESTART_FIREWALL},
 		{EVM_RESTART_SSHD,		EVT_RESTART_SSHD,		RCN_RESTART_SSHD,	EVM_RESTART_FIREWALL},
 #if defined(APP_DOH)
@@ -1006,6 +1009,7 @@
 		{EVM_RESTART_WINS,		EVT_RESTART_WINS,		RCN_RESTART_WINS,	EVM_RESTART_DHCPD|EVM_RESTART_NMBD|EVM_REAPPLY_VPNSVR},
 #endif
 		{EVM_REAPPLY_VPNSVR,		EVT_REAPPLY_VPNSVR,		RCN_REAPPLY_VPNSVR,	0},
+		{EVM_REAPPLY_VPNCLI,		EVT_REAPPLY_VPNCLI,		RCN_REAPPLY_VPNCLI,	0},
 		{EVM_RESTART_DHCPD,		EVT_RESTART_DHCPD,		RCN_RESTART_DHCPD,	0},
 		{EVM_RESTART_SWITCH_CFG,	EVT_RESTART_SWITCH_CFG,		RCN_RESTART_SWITCH_CFG,	0},
 		{EVM_RESTART_SWITCH_VLAN,	EVT_RESTART_SWITCH_VLAN,	RCN_RESTART_SWITCH_VLAN,0},

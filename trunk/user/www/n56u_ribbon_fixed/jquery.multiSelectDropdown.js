@@ -103,6 +103,7 @@
             const $label = $('<label>').addClass('msd-label');
             const $checkbox = $('<input type="checkbox" style="margin: 3px 0 3px 0;">')
               .val(text)
+              .prop('title', title)
               .prop('checked', checked)
               .on('change', function(){
                 updateSelected();
@@ -308,6 +309,7 @@
           return inst.$itemList.find('input[type="checkbox"]').map(function(){
             return {
               text: this.value,
+              title: $(this).prop('title'),
               checked: $(this).prop('checked')
             };
           }).get();

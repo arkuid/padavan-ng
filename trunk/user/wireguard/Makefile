@@ -41,5 +41,5 @@ romfs:
 	$(ROMFSINST) -p +x /usr/bin/wgc.sh
 	$(ROMFSINST) -p +x /usr/bin/wg-json.sh
 ifeq ($(CONFIG_FIRMWARE_INCLUDE_IPSET),y)
-	$(ROMFSINST) -p +x /usr/bin/load-custom-ipset.sh
+	$(ROMFSINST) -p +x /usr/bin/load-ipset.sh
 endif

@@ -1331,6 +1331,10 @@ handle_notifications(void)
 		{
 			restart_vpn_client();
 		}
+		else if (strcmp(entry->d_name, RCN_REAPPLY_VPNCLI) == 0)
+		{
+			reapply_vpn_client();
+		}
 		else if (strcmp(entry->d_name, "start_vpn_client") == 0)
 		{
 			start_vpn_client();

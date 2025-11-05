@@ -573,12 +573,10 @@ EOF
 		if [ ! -f "$user_dnsmasq_ipset" ] ; then
 			cat > "$user_dnsmasq_ipset" <<EOF
 ### Custom user ipsets for dnsmasq
-### Built-in wireguard client uses an "unblock" ipset, if ipset is built into the firmware
-### For clean ipset reboot router  or launch: ipset flush unblock && restart_dns
 
 ### for testing
 # ipset=/myip.ru/unblock,tor
-# ipset=/ifconfig.me/unblock
+# ipset=/myip2.ru/unblock
 
 ipset=/onion/tor
 ipset=/exit/tor
@@ -592,15 +590,17 @@ ipset=/4pda.ws/unblock
 ipset=/instagram.com/unblock
 ipset=/ig.me/unblock
 ipset=/cdninstagram.com/unblock
-ipset=/instagramstatic.com/unblock
+ipset=/threads.net/unblock
+ipset=/threads.com/unblock
 ipset=/rutor.is/unblock
 ipset=/rutracker.org/unblock
 ipset=/meta.com/unblock
 ipset=/meta.ai/unblock
 ipset=/fbcdn.net/unblock
 ipset=/fb.com/unblock
+ipset=/fburl.com/unblock
 ipset=/facebook.com/unblock
-ipset=/cdn.fbsbx.com/unblock
+ipset=/fbsbx.com/unblock
 ipset=/whatsapp.net/unblock
 ipset=/whatsapp.com/unblock
 ipset=/whatsapp.patchcdn.com/unblock
@@ -615,7 +615,7 @@ ipset=/amazonwebservices.d2.sc.omtrdc.net/unblock
 ipset=/challenges.cloudflare.com/unblock
 ipset=/jtvnw.net/unblock
 ipset=/ttvnw.net/unblock
-ipset=/culuscdn.com/unblock
+ipset=/oculuscdn.com/unblock
 ipset=/discord.com/unblock
 ipset=/cdn.discordapp.com/unblock
 ipset=/cloudfront.net/unblock

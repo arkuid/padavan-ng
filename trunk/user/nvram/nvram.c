@@ -269,7 +269,7 @@ main(int argc, char **argv)
 		}
 		else if (!strcmp(*argv, "settmp")) {
 			if (*++argv) {
-				char buf[1024];
+				char buf[NVRAM_MAX_VALUE_LEN];
 				strncpy(value = buf, *argv, sizeof(buf)-1);
 				name = strsep(&value, "=");
 				nvram_set_temp(name, value);
@@ -277,7 +277,7 @@ main(int argc, char **argv)
 		}
 		else if (!strcmp(*argv, "set")) {
 			if (*++argv) {
-				char buf[1024];
+				char buf[NVRAM_MAX_VALUE_LEN];
 				strncpy(value = buf, *argv, sizeof(buf)-1);
 				name = strsep(&value, "=");
 				nvram_set(name, value);

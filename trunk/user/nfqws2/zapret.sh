@@ -187,7 +187,7 @@ iptables_stop()
     for i in "" $([ -d /proc/sys/net/ipv6 ] && echo 6); do
         ip${i}tables-restore -n <<EOF
 *mangle
-$(ip${i}tables-save -t mangle 2>/dev/null | sed -n "/queue-num $NFQUEUE_NUM /{s/^-A/-D/p}")
+$(ip${i}tables-save -t mangle 2>/dev/null | sed -n "/\(queue-bypass\|mark $DESYNC_MARK\/$DESYNC_MARK\|mark $FILTER_MARK\/$FILTER_MARK\)/{s/^-A/-D/p}")
 COMMIT
 EOF
     done

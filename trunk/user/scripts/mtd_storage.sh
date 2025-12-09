@@ -573,13 +573,20 @@ EOF
 		if [ ! -f "$user_dnsmasq_ipset" ] ; then
 			cat > "$user_dnsmasq_ipset" <<EOF
 ### Custom user ipsets for dnsmasq
+ipset=/onion/tor
+ipset=/exit/tor
 
 ### for testing
 # ipset=/myip.ru/unblock,tor
 # ipset=/myip2.ru/unblock
 
-ipset=/onion/tor
-ipset=/exit/tor
+### youtube
+ipset=/youtube.com/unblock
+ipset=/googlevideo.com/unblock
+ipset=/googleapis.com/unblock
+ipset=/ytimg.com/unblock
+ipset=/ggpht.com/unblock
+
 ipset=/warpgen.net/unblock,tor
 ipset=/chatgpt.com/unblock,tor
 ipset=/cdn.oaistatic.com/unblock,tor
@@ -587,8 +594,6 @@ ipset=/oaiusercontent.com/unblock,tor
 ipset=/openai.com/unblock,tor
 ipset=/4pda.to/unblock
 ipset=/4pda.ws/unblock
-ipset=/googlevideo.com/unblock
-ipset=/youtube.com/unblock
 ipset=/instagram.com/unblock
 ipset=/ig.me/unblock
 ipset=/cdninstagram.com/unblock

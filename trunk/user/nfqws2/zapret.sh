@@ -52,18 +52,13 @@ log()
     logger -t "zapret${NFQWS_VER}$pid" "$@"
 }
 
-trim()
-{
-    awk '{gsub(/^ +| +$/,"")}1'
-}
-
 error()
 {
     log "$@"
     exit 1
 }
 
-_get_if_default()
+get_if_default()
 {
     # $1 = 4  - ipv4
     # $1 = 6  - ipv6
@@ -93,8 +88,8 @@ ipset_create_exclude()
             127.0.0.0/8 169.254.0.0/16 100.64.0.0/10 \
             198.18.0.0/15 192.88.99.0/24 192.0.0.0/24 \
             192.0.2.0/24 198.51.100.0/24 203.0.113.0/24 \
-            224.0.0.0/4 240.0.0.0/4 \
-            192.168.0.0/16 10.0.0.0/8
+            192.168.0.0/16 10.0.0.0/8 172.16.0.0/12 \
+            224.0.0.0/4 240.0.0.0/4
         do
             ipset add nozapret $i
         done
@@ -108,9 +103,9 @@ ipset_exclude()
     echo "-m set ! --match-set nozapret$1 $2"
 }
 
-_mangle_rules()
+set_fw_rules()
 {
-    local i j filter
+    local iface proto filter
 
     # enable only for ipv4
     # $1 = "6" - sign that it is ipv6
@@ -124,14 +119,14 @@ _mangle_rules()
     fi
 
     local rule_nfqueue="-j NFQUEUE --queue-num $NFQUEUE_NUM --queue-bypass"
-    local rule_pre_filter="$(ipset_exclude "$1" src) -m connbytes --connbytes 1:3 --connbytes-mode packets --connbytes-dir reply $rule_nfqueue"
+    local rule_pre_filter="-m connbytes --connbytes 1:3 --connbytes-mode packets --connbytes-dir reply $rule_nfqueue"
     local rule_post_filter="$filter $(ipset_exclude "$1" dst) -m mark ! --mark $DESYNC_MARK/$DESYNC_MARK -m connbytes --connbytes 1:9 --connbytes-mode packets --connbytes-dir original $rule_nfqueue"
 
-    for i in $ISP_IF; do
-        for j in tcp udp; do
-            echo "-A INPUT -i $i -p $j -m multiport --sports 443,80 $rule_pre_filter"
-            echo "-A FORWARD -i $i -p $j -m multiport --sports 443,80 $rule_pre_filter"
-            echo "-A POSTROUTING -o $i -p $j $rule_post_filter"
+    for iface in $ISP_IF; do
+        for proto in tcp udp; do
+            echo "-A INPUT -i $iface -p $proto -m multiport --sports 443,80 $rule_pre_filter"
+            echo "-A FORWARD -i $iface -p $proto -m multiport --sports 443,80 $rule_pre_filter"
+            echo "-A POSTROUTING -o $iface -p $proto $rule_post_filter"
         done
     done
 }
@@ -178,7 +173,7 @@ startup_args()
               --lua-init=@/usr/share/zapret/lua/zapret-antidpi.lua
               --lua-init=@/usr/share/zapret/lua/zapret-auto.lua"
 
-    local strategy="$(grep -v '^#' "$STRATEGY_FILE" | tr -d '"')"
+    local strategy="$(grep -v '^[[:space:]]*#' "$STRATEGY_FILE" | tr -d '"')"
     strategy=$(replace_str "$HOSTLIST_MARKER" "$HOSTLIST" "$strategy")
     strategy=$(replace_str "$HOSTLIST_NOAUTO_MARKER" "$HOSTLIST_NOAUTO" "$strategy")
     echo "$strategy"
@@ -210,7 +205,7 @@ iptables_start()
         ipset_create_exclude $i
         ip${i}tables-restore -n <<EOF
 *mangle
-$(_mangle_rules $i)
+$(set_fw_rules $i)
 COMMIT
 EOF
     done
@@ -223,7 +218,7 @@ firewall_start()
     if isp_is_present; then
         iptables_start
 
-        log "firewall rules updated on interface(s): $(echo "$ISP_IF" | tr -s '\n' ' ' | trim)"
+        log "firewall rules updated on interface(s): "$ISP_IF
     else
         log "interfaces not defined, firewall rules not set"
     fi
@@ -242,7 +237,7 @@ create_random_pattern_files()
     local len=$(for i in $ISP_IF; do cat /sys/class/net/$i/mtu; done | sort | head -n1)
     [ ! "$len" ] && len=1280
 
-    local pattern=$(grep -v "^#" "$STRATEGY_FILE" | tr -d '"' \
+    local pattern=$(grep -v "^[[:space:]]*#" "$STRATEGY_FILE" | tr -d '"' \
         | grep -Eo "[-](pattern|syndata|unknown|unknown-udp)=/tmp/rnd[0-9]?[.]bin" \
         | cut -d '=' -f2 | sort -u)
 
@@ -408,23 +403,19 @@ for i in user.list exclude.list auto.list strategy; do
 done
 touch /tmp/filter.list
 
-ISP_INTERFACE="$(nvram get zapret_iface)"
-unset ISP_IF
-
-if [ "$ISP_INTERFACE" ]; then
-    ISP_IF=$(echo "$ISP_INTERFACE" | tr -s ',' ' ' | trim | tr -s ' ' '\n' | sort -u)
-else
-    ISP_IF4=$(_get_if_default 4)
+ISP_IF="$(nvram get zapret_iface | tr -s ' ,' '\n' | sort -u)"
+if [ -z "$ISP_IF" ]; then
+    ISP_IF4=$(get_if_default 4)
     [ -n "$ISP_IF4" ] || ISP_IF4="$(nvram get wan0_ifname)"
 
-    ISP_IF6=$(_get_if_default 6)
+    ISP_IF6=$(get_if_default 6)
     [ -n "$ISP_IF6" ] || ISP_IF6="$(nvram get wan0_ifname6)"
 
-    ISP_IF=$(printf "%s\n%s" "${ISP_IF4}" "${ISP_IF6}" | sort -u)
+    ISP_IF=$(printf "%s\n" $ISP_IF4 $ISP_IF6 | sort -u)
 fi
 
 LOG_LEVEL="$(nvram get zapret_log)"
-CLIENTS_ALLOWED="$(nvram get zapret_clients_allowed | tr -s ',' ' ' | trim)"
+CLIENTS_ALLOWED="$(nvram get zapret_clients_allowed | tr -s ',' ' ')"
 
 STRATEGY_FILE="${STRATEGY_FILE}$(nvram get zapret_strategy)"
 set_strategy_file "$2"

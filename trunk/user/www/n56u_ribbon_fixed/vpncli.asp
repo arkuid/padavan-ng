@@ -39,7 +39,6 @@ $j(document).ready(function() {
 
 <% login_state_hook(); %>
 <% openvpn_cli_cert_hook(); %>
-<% net_update_vpnc_wg_state(); %>
 
 lan_ipaddr_x = '<% nvram_get_x("", "lan_ipaddr"); %>';
 lan_netmask_x = '<% nvram_get_x("", "lan_netmask"); %>';

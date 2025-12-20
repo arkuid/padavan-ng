@@ -1096,8 +1096,10 @@ watchdog_on_timer(void)
 	httpd_process_check();
 
 	/* DNS/DHCP server check */
-	if (!is_ap_mode)
+	if (!is_ap_mode) {
 		dnsmasq_process_check();
+		watchdog_wireguard_client();
+	}
 
 	inet_handler(is_ap_mode);
 

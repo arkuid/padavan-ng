@@ -425,6 +425,7 @@ void stop_wireguard_client(void);
 int restart_wireguard_client(void);
 void reload_wireguard_client(void);
 void update_wireguard_client(void);
+void watchdog_wireguard_client(void);
 int start_wireguard_server(void);
 void stop_wireguard_server(void);
 void restart_wireguard_server(void);

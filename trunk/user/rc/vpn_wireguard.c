@@ -85,3 +85,11 @@ update_wireguard_client(void)
     if (is_enabled_wireguard_client())
         eval("/usr/bin/wgc.sh", "update");
 }
+
+void
+watchdog_wireguard_client(void)
+{
+    // check connection status
+    if (is_enabled_wireguard_client())
+        doSystem("/usr/bin/wgc.sh watchdog &");
+}

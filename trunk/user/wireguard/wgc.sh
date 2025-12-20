@@ -18,11 +18,13 @@ IF_DNS="$(nvram get vpnc_wg_if_dns | tr -s ',' ' ')"
 unset DEFAULT
 [ "$(nvram get vpnc_dgw)" = "1" ] && DEFAULT=1
 
-PID_WATCHDOG="/var/run/wg_watchdog.pid"
+LOCK_DELAY="/var/lock/wgc_start_delay.lock"
+LOCK_WATCHDOG="/var/lock/wgc_watchdog.lock"
+LOCK_IPTABLES="/var/lock/wgc_iptables.lock"
 
 PEER_PUBLIC="$(nvram get vpnc_wg_peer_public)"
 PEER_PORT="$(nvram get vpnc_wg_peer_port)"
-PEER_ENDPOINT="$(nvram get vpnc_wg_peer_endpoint)${PEER_PORT:+":$PEER_PORT"}"
+PEER_ENDPOINT="$(nvram get vpnc_wg_peer_endpoint)"
 PEER_KEEPALIVE="$(nvram get vpnc_wg_peer_keepalive)"
 [ -n "$PEER_KEEPALIVE" ] || PEER_KEEPALIVE=25
 PEER_ALLOWEDIPS="$(nvram get vpnc_wg_peer_allowedips | tr -d ' ')"
@@ -62,7 +64,7 @@ log()
 
 error()
 {
-    log "error: $@" >&2
+    [ -n "$*" ] && log "error: $@" >&2
     stop_wg
     exit 1
 }
@@ -116,6 +118,13 @@ setconf_wg()
         awg="$(cps)"
     fi
 
+    timeout 10 2>&1 nslookup $PEER_ENDPOINT >/dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        [ "$(nvram get vpnc_state_t)" = "2" ] && log "not found host $PEER_ENDPOINT"
+        set_state 0
+        return 1
+    fi
+
     cat > "/tmp/${IF_NAME}.conf.$$" <<EOF
 [Interface]
 PrivateKey = $IF_PRIVATE
@@ -124,14 +133,18 @@ $awg
 
 [Peer]
 PublicKey = $PEER_PUBLIC
-Endpoint = $PEER_ENDPOINT
+Endpoint = ${PEER_ENDPOINT}:${PEER_PORT}
 PersistentKeepalive = $PEER_KEEPALIVE
 AllowedIPs = $PEER_ALLOWEDIPS
 EOF
     [ "$IF_PRESHARED" ] && echo "PresharedKey = $IF_PRESHARED" >> "/tmp/${IF_NAME}.conf.$$"
 
+    # increase the priority of ipv4
     echo "precedence ::ffff:0:0/96  100" > /etc/gai.conf
+
+    log_try_connect
     local res=$($WG setconf $IF_NAME "/tmp/${IF_NAME}.conf.$$" 2>&1)
+
     rm -f /etc/gai.conf
     rm -f "/tmp/${IF_NAME}.conf.$$"
 
@@ -146,8 +159,6 @@ EOF
         echo "$res" | while read i; do
             log "$i"
         done
-
-        stop_wg
         return 1
     fi
 }
@@ -217,7 +228,7 @@ wg_if_init()
     local if_ip=$(ip addr show dev $IF_NAME | awk '/inet/{print $2}')
     [ "$if_ip" ] || error "$IF_NAME interface address not set"
 
-    setconf_wg || die
+    setconf_wg || error
 
     if ip link set $IF_NAME up; then
         log "client started, interface: $IF_NAME, addresses: "$if_ip
@@ -228,20 +239,55 @@ wg_if_init()
     send_ping
 }
 
+set_state()
+{
+    nvram set vpnc_state_t=$1
+}
+
+log_latest_connect()
+{
+    if [ "$(nvram get vpnc_state_t)" = "1" ]; then
+        log "latest handshake was more than 5 minutes ago"
+    fi
+}
+
+log_try_connect()
+{
+    if [ ! "$(nvram get vpnc_state_t)" = "2" ]; then
+        log "trying connect to $PEER_ENDPOINT"
+        set_state 2
+    fi
+}
+
+log_unable_connect()
+{
+    log "unable connect to $PEER_ENDPOINT"
+    set_state 2
+}
+
+log_success_connect()
+{
+    if [ ! "$(nvram get vpnc_state_t)" = "1" ]; then
+        log "successfully connected"
+        set_state 1
+    fi
+}
+
 reconnect_wg()
 {
     # reconnect using current config
 
     if ! check_connected; then
-        [ "$1" ] || log "trying connect to $PEER_ENDPOINT"
-        setconf_wg reconnect
+        setconf_wg reconnect || die
         check_connection_status
         if [ $? -eq 0 ]; then
-            log "successfully connected"
+            log_success_connect
             return 0
         else
             return 1
         fi
+    else
+        log_success_connect
     fi
 }
 
@@ -252,7 +298,7 @@ get_latest_handshakes()
 
 send_ping()
 {
-    timeout 1 ping -I $IF_NAME 255.255.255.255 >/dev/null 2>&1
+    timeout 1 ping -I $IF_NAME 255.255.255.255 >/dev/null 2>&1 &
 }
 
 check_connected()
@@ -262,14 +308,14 @@ check_connected()
     is_started || die
 
     lh=$(get_latest_handshakes)
-    [ "$lh" ] || error "no peer in config"
+    [ "$lh" ] || return 1
     [ "$lh" -eq 0 ] && return 1
 
     now=$(date +%s)
-    if [ "$((now - lh))" -gt "300" ]; then
-        log "latest handshake was more than 5 minutes ago"
+    if [ "$((now - lh))" -gt 300 ]; then
+        log_latest_connect
         return 1
-    elif [ "$((now - lh))" -gt "$PEER_KEEPALIVE" ]; then
+    elif [ "$((now - lh))" -gt 30 ]; then
         send_ping
     fi
 
@@ -280,7 +326,7 @@ check_connection_status()
 {
     local loop=0
     while is_started; do
-        [ "$loop" -ge 10 ] && break
+        [ "$loop" -ge 7 ] && break
         check_connected && return 0
         loop=$((loop + 1))
         sleep 1
@@ -293,16 +339,14 @@ start_wg()
 {
     is_started && die "already started"
 
+    set_state 2
     ipset_create
-    start_watchdog &
-    echo $! > "$PID_WATCHDOG"
+    delayed_start &
+    echo $! > "$LOCK_DELAY"
 }
 
-start_watchdog()
+delayed_start()
 {
-    local pid="$(cat "$PID_WATCHDOG" 2>/dev/null)"
-    local no_log
-
     # waiting restart zapret firewall rules
     sleep 2
 
@@ -311,20 +355,23 @@ start_watchdog()
     wg_setdns
     start_fw
 
-    check_connection_status && log "successfully connected"
+    if check_connection_status; then
+        log_success_connect
+    else
+        log_unable_connect
+    fi
+    rm -f "$LOCK_DELAY"
+}
 
-    while is_started; do
-        [ "$pid" = "$(cat $PID_WATCHDOG 2>/dev/null)" ] || die
-        if reconnect_wg $no_log; then
-            no_log=
-        else
-            # disable spam to log
-            no_log=1
-        fi
-        sleep 15
-    done
+watchdog()
+{
+    is_started || return
+    [ -f "$LOCK_DELAY" ] && return
 
-    stop_fw
+    (
+        flock -n 200 || exit 1
+        reconnect_wg
+    ) 200>$LOCK_WATCHDOG
 }
 
 reload_wg()
@@ -345,6 +392,7 @@ update_wg()
 
 stop_wg()
 {
+    set_state 0
     stop_fw
 
     ip route flush table $TABLE 2>/dev/null
@@ -358,10 +406,9 @@ stop_wg()
     ip link del dev $IF_NAME 2>/dev/null \
         && log "client stopped"
 
-    if [ -f "$PID_WATCHDOG" ]; then
-        kill "$(cat "$PID_WATCHDOG")" 2>/dev/null
-        rm -f "$PID_WATCHDOG"
-    fi
+    rm -f "$LOCK_DELAY"
+    rm -f "$LOCK_WATCHDOG"
+    rm -f "$LOCK_IPTABLES"
 }
 
 filter_ipv4()
@@ -518,7 +565,7 @@ $(ipt_set_rules)
 COMMIT
 EOF
         [ $? -eq 0 ] || log "firewall rules update failed"
-    ) 200>/var/lock/wgc_iptables.lock
+    ) 200>$LOCK_IPTABLES
 }
 
 case $1 in
@@ -541,6 +588,10 @@ case $1 in
 
     reload)
         reload_wg
+    ;;
+
+    watchdog)
+        watchdog
     ;;
 esac
 

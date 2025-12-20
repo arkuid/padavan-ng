@@ -2057,52 +2057,6 @@ net_iface_list_hook(int eid, webs_t wp, int argc, char **argv)
 }
 
 static int
-net_update_vpnc_wg_state_hook(int eid, webs_t wp, int argc, char **argv)
-{
-#if defined(APP_WIREGUARD)
-    if (nvram_get_int("vpnc_enable") == 0 || nvram_get_int("vpnc_type") != 3) {
-        return 0;
-    }
-
-    time_t timestamp = time(NULL);
-    char command[256];
-    snprintf(command, sizeof(command), "/usr/sbin/wg show '%s' latest-handshakes", IFNAME_CLIENT_WG);
-
-    FILE *fp = popen(command, "r");
-    if (!fp) {
-        return 1;
-    }
-
-    int vpnc_state_t = nvram_safe_get_int("vpnc_state_t", 0, 0, 2);
-    int wg_state = 0;  // 0 = нет соединения, 1 = активно, 2 = ошибка
-    char result[256];
-
-    if (fgets(result, sizeof(result), fp)) {
-        // Парсим вывод команды (ожидаем формат: <pubkey> <timestamp>)
-        char *token = strtok(result, " \t");
-        token = strtok(NULL, " \t\n");  // Получаем timestamp
-
-        if (token) {
-            int wg_ts = atoi(token);
-
-            if (wg_ts <= 0) {
-                wg_state = 2;  // Некорректное время
-            } else if (timestamp - wg_ts > 300) {  // 300 сек = 5 мин
-                wg_state = 0;  // Соединение устарело
-            } else {
-                wg_state = 1;  // Активное соединение
-            }
-        }
-    }
-    pclose(fp);
-
-    if (vpnc_state_t != wg_state)
-        nvram_set_int_temp("vpnc_state_t", wg_state);
-#endif
-    return 0;
-}
-
-static int
 ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv) 
 {
 #if defined(UTL_HDPARM)
@@ -4188,7 +4142,6 @@ struct ej_handler ej_handlers[] =
 	{ "openvpn_srv_cert_hook", openvpn_srv_cert_hook},
 	{ "openvpn_cli_cert_hook", openvpn_cli_cert_hook},
 	{ "net_iface_list", net_iface_list_hook},
-	{ "net_update_vpnc_wg_state", net_update_vpnc_wg_state_hook},
 	{ NULL, NULL }
 };
 
